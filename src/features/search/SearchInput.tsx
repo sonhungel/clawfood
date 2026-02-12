@@ -34,7 +34,7 @@ export default function SearchInput({
             value={keyword}
             onChange={(e) => onKeywordChange(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Bạn đang tìm kiếm món gì? (VD: Phở rạng, cơm văn phòng...)"
+            placeholder="What are you craving? (e.g. pho, boba, BBQ...)"
             className="w-full text-sm outline-none bg-transparent text-text-primary placeholder:text-text-muted"
           />
         </div>
@@ -43,7 +43,7 @@ export default function SearchInput({
         <div className="flex items-center gap-1.5 px-3 py-2 text-sm text-text-secondary border-t sm:border-t-0 sm:border-l border-gray-200 shrink-0">
           <MapPin className="w-4 h-4 text-primary shrink-0" />
           <span className="truncate max-w-[160px]">
-            {locationLoading ? 'Đang lấy vị trí...' : address || 'Chưa xác định'}
+            {locationLoading ? 'Getting location...' : address || 'Location unknown'}
           </span>
         </div>
 
@@ -55,7 +55,7 @@ export default function SearchInput({
                      transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed
                      text-sm whitespace-nowrap shrink-0 cursor-pointer"
         >
-          Hỏi AI ngay
+          Ask AI
         </button>
       </div>
     </div>

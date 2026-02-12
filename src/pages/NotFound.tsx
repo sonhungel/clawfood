@@ -8,11 +8,11 @@ export default function NotFound() {
         <div className="text-8xl mb-4">🍜</div>
         <h1 className="text-4xl font-bold text-text-primary mb-2">404</h1>
         <p className="text-text-muted mb-6">
-          Oops! Trang bạn tìm không tồn tại.
+          Oops! The page you're looking for doesn't exist.
         </p>
         <a href="/">
           <Button variant="primary" size="lg" icon={<HomeIcon className="w-5 h-5" />}>
-            Về trang chủ
+            Back to Home
           </Button>
         </a>
       </div>

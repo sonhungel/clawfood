@@ -6,7 +6,7 @@ interface RestaurantListProps {
   title?: string;
 }
 
-export default function RestaurantList({ restaurants, title = 'Gợi ý cho bạn' }: RestaurantListProps) {
+export default function RestaurantList({ restaurants, title = 'Recommendations' }: RestaurantListProps) {
   if (restaurants.length === 0) return null;
 
   return (

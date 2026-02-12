@@ -1,4 +1,4 @@
-// Types dùng toàn dự án
+// Global types
 
 export interface Location {
   latitude: number;
@@ -11,11 +11,25 @@ export interface Restaurant {
   name: string;
   description: string;
   distance?: string;
+  distanceKm?: number;
   rating?: number;
   image?: string;
   address?: string;
   priceRange?: string;
   cuisine?: string;
+  googleMapsUrl?: string;
+  placeId?: string;
+  totalRatings?: number;
+  photoUrl?: string;
+  latitude?: number;
+  longitude?: number;
+}
+
+export interface SearchFilters {
+  maxDistance: number;  // 0 = any
+  minRating: number;    // 0 = any
+  priceRange: string;   // '' = any
+  sortBy: 'relevance' | 'rating-desc' | 'distance-asc';
 }
 
 export interface ChatGPTRequest {

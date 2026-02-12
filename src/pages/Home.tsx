@@ -1,12 +1,38 @@
-import { useState, useCallback, useEffect } from 'react';
-import { Bot, Sparkles, Utensils, Filter } from 'lucide-react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
+import { Bot, Sparkles, Utensils, SlidersHorizontal } from 'lucide-react';
 import { useLocation } from '../features/location/useLocation';
 import SearchInput from '../features/search/SearchInput';
 import { searchRestaurants } from '../features/chatgpt/chatgpt.service';
 import RestaurantList from '../components/food/RestaurantList';
+import FilterPanel from '../components/common/FilterPanel';
 import Button from '../components/common/Button';
 import { DEFAULT_CATEGORIES } from '../utils/constants';
-import type { Restaurant, SearchStatus } from '../types';
+import type { Restaurant, SearchStatus, SearchFilters } from '../types';
+
+const DEFAULT_FILTERS: SearchFilters = {
+  maxDistance: 0,
+  minRating: 0,
+  priceRange: '',
+  sortBy: 'relevance',
+};
+
+/** Parse "1.5km" or "0.5km" into a number */
+function parseDistanceKm(dist?: string): number {
+  if (!dist) return Infinity;
+  const match = dist.match(/([\d.]+)\s*km/i);
+  return match ? parseFloat(match[1]) : Infinity;
+}
+
+/** Check if a price string matches a filter category */
+function matchesPrice(priceRange?: string, filter?: string): boolean {
+  if (!filter) return true;
+  if (!priceRange) return true;
+  const dollarCount = (priceRange.match(/\$/g) || []).length;
+  if (filter === '$') return dollarCount <= 1;
+  if (filter === '$$') return dollarCount === 2;
+  if (filter === '$$$') return dollarCount >= 3;
+  return true;
+}
 
 export default function Home() {
   const { location, loading: locationLoading, address } = useLocation();
@@ -15,6 +41,51 @@ export default function Home() {
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [aiMessage, setAiMessage] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState<SearchFilters>(DEFAULT_FILTERS);
+  const [recommendations, setRecommendations] = useState<Restaurant[]>([]);
+  const [recsLoading, setRecsLoading] = useState(false);
+  const [recsFetched, setRecsFetched] = useState(false);
+
+  // Apply filters & sorting to the restaurant list
+  const filteredRestaurants = useMemo(() => {
+    let result = [...restaurants];
+
+    // Filter by distance
+    if (filters.maxDistance > 0) {
+      result = result.filter((r) => parseDistanceKm(r.distance) <= filters.maxDistance);
+    }
+
+    // Filter by rating
+    if (filters.minRating > 0) {
+      result = result.filter((r) => (r.rating ?? 0) >= filters.minRating);
+    }
+
+    // Filter by price
+    if (filters.priceRange) {
+      result = result.filter((r) => matchesPrice(r.priceRange, filters.priceRange));
+    }
+
+    // Sort
+    if (filters.sortBy === 'rating-desc') {
+      result.sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0));
+    } else if (filters.sortBy === 'distance-asc') {
+      result.sort((a, b) => parseDistanceKm(a.distance) - parseDistanceKm(b.distance));
+    }
+
+    return result;
+  }, [restaurants, filters]);
+
+  // Auto-fetch recommendations when location becomes available
+  useEffect(() => {
+    if (!location || recsFetched || locationLoading) return;
+    setRecsFetched(true);
+    setRecsLoading(true);
+    searchRestaurants('Popular restaurants nearby', location.latitude, location.longitude)
+      .then((result) => setRecommendations(result.restaurants))
+      .catch(() => setRecommendations([]))
+      .finally(() => setRecsLoading(false));
+  }, [location, recsFetched, locationLoading]);
 
   const handleSearch = useCallback(async () => {
     if (!keyword.trim()) return;
@@ -31,7 +102,7 @@ export default function Home() {
       setAiMessage(result.message);
       setStatus('success');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Có lỗi xảy ra');
+      setError(err instanceof Error ? err.message : 'Something went wrong');
       setStatus('error');
     }
   }, [keyword, location]);
@@ -39,6 +110,8 @@ export default function Home() {
   const handleCategoryClick = (label: string) => {
     setKeyword(label);
   };
+
+  const hasActiveFilters = filters.maxDistance > 0 || filters.minRating > 0 || filters.priceRange !== '' || filters.sortBy !== 'relevance';
 
   return (
     <main className="min-h-screen">
@@ -64,12 +137,12 @@ export default function Home() {
           {/* Title */}
           <div className="text-center mb-8 sm:mb-10">
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-text-primary leading-tight mb-3">
-              Tìm quán ngon
+              Find great food
               <br />
-              <span className="text-primary">gần bạn</span> với AI!
+              <span className="text-primary">near you</span> with AI!
             </h1>
             <p className="text-text-muted text-sm sm:text-base max-w-md mx-auto">
-              Chỉ cần cho biết bạn muốn ăn gì, AI sẽ gợi ý ngay
+              Just tell us what you're craving — AI will find the best spots
             </p>
           </div>
 
@@ -122,7 +195,7 @@ export default function Home() {
                 <>
                   <div className="bg-accent rounded-2xl rounded-bl-md px-5 py-3 mb-4 inline-block">
                     <p className="text-sm sm:text-base font-medium text-text-primary">
-                      🤖 Hỏi AI tìm quán ngon ngay
+                      🤖 Ask AI to find great food nearby
                     </p>
                   </div>
                   <div className="flex flex-wrap justify-center sm:justify-start gap-2">
@@ -131,7 +204,7 @@ export default function Home() {
                       size="sm"
                       icon={<Utensils className="w-3.5 h-3.5" />}
                       onClick={() => {
-                        setKeyword('Quán ăn phổ biến');
+                        setKeyword('Popular restaurants');
                         handleSearch();
                       }}
                     >
@@ -140,11 +213,28 @@ export default function Home() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      icon={<Filter className="w-3.5 h-3.5" />}
+                      icon={<SlidersHorizontal className="w-3.5 h-3.5" />}
+                      onClick={() => setShowFilters(!showFilters)}
+                      className={hasActiveFilters ? 'text-primary font-semibold' : ''}
                     >
-                      Set filters
+                      {showFilters ? 'Hide filters' : 'Set filters'}
+                      {hasActiveFilters && (
+                        <span className="ml-1 w-2 h-2 rounded-full bg-primary inline-block" />
+                      )}
                     </Button>
                   </div>
+
+                  {/* Filter Panel */}
+                  {showFilters && (
+                    <div className="mt-3 animate-fade-in">
+                      <FilterPanel
+                        filters={filters}
+                        onFiltersChange={setFilters}
+                        onClose={() => setShowFilters(false)}
+                        resultCount={filteredRestaurants.length}
+                      />
+                    </div>
+                  )}
                 </>
               )}
 
@@ -152,13 +242,13 @@ export default function Home() {
                 <div className="space-y-3">
                   <div className="bg-accent rounded-2xl rounded-bl-md px-5 py-3 inline-block">
                     <p className="text-sm font-medium text-primary">
-                      AI đang tìm kiếm... 🔍
+                      AI is searching... 🔍
                     </p>
                   </div>
                   <div className="flex flex-col gap-2 max-w-sm">
-                    <TypingMessage text="Đang xử lý nhu cầu..." delay={0} />
-                    <TypingMessage text="Tìm quán tốt nhất gần bạn..." delay={800} />
-                    <TypingMessage text="Sắp có kết quả rồi..." delay={1600} />
+                    <TypingMessage text="Processing your request..." delay={0} />
+                    <TypingMessage text="Finding the best spots near you..." delay={800} />
+                    <TypingMessage text="Almost ready..." delay={1600} />
                   </div>
                 </div>
               )}
@@ -174,7 +264,7 @@ export default function Home() {
               {status === 'error' && (
                 <div className="bg-red-50 rounded-2xl rounded-bl-md px-5 py-3 inline-block">
                   <p className="text-sm text-red-600">
-                    ❌ {error || 'Có lỗi xảy ra. Vui lòng thử lại!'}
+                    ❌ {error || 'Something went wrong. Please try again!'}
                   </p>
                 </div>
               )}
@@ -186,73 +276,33 @@ export default function Home() {
       {/* Restaurant results */}
       {restaurants.length > 0 && (
         <section className="pb-16">
-          <RestaurantList restaurants={restaurants} />
+          {filteredRestaurants.length > 0 ? (
+            <RestaurantList restaurants={filteredRestaurants} />
+          ) : (
+            <div className="text-center py-12 text-text-secondary">
+              <SlidersHorizontal className="w-10 h-10 mx-auto mb-3 opacity-40" />
+              <p className="font-medium">No restaurants match your filters</p>
+              <p className="text-sm mt-1">Try adjusting your filters to see more results</p>
+            </div>
+          )}
         </section>
       )}
 
-      {/* Empty state when idle */}
-      {status === 'idle' && (
+      {/* Recommendations based on location — only when idle and location available */}
+      {status === 'idle' && location && (
         <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-16">
-          <h2 className="text-xl sm:text-2xl font-bold text-text-primary mb-6">Gợi ý cho bạn</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {[
-              {
-                title: 'Bún Chả Hương Liên',
-                desc: 'Quán bún chả nổi tiếng, thịt nướng thơm phức thấm đẫm gia vị.',
-                distance: '0.5km',
-                rating: 4.5,
-                img: 'https://images.unsplash.com/photo-1555126634-323283e090fa?w=400&h=300&fit=crop',
-                price: '35k-55k',
-              },
-              {
-                title: 'Bún Chả Hương Liên',
-                desc: 'Thịt nướng sấy để cuộn với bún tươi, rau sống theo kiểu truyền thống.',
-                distance: '3.5km',
-                rating: 4.5,
-                img: 'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=400&h=300&fit=crop',
-                price: '35k-55k',
-              },
-              {
-                title: 'Bún Chả Hương Liên',
-                desc: 'Không gian quán rộng rãi, phục vụ nhanh gọn với nhiều món ăn kèm.',
-                distance: '0.5km',
-                rating: 4.5,
-                img: 'https://images.unsplash.com/photo-1552566626-52f8b828add9?w=400&h=300&fit=crop',
-                price: '30k-50k',
-              },
-            ].map((item, i) => (
-              <div
-                key={i}
-                className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 
-                           hover:-translate-y-1 group animate-fade-in-up"
-                style={{ animationDelay: `${i * 100}ms` }}
-              >
-                <div className="relative h-44 sm:h-48 overflow-hidden">
-                  <img
-                    src={item.img}
-                    alt={item.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    loading="lazy"
-                  />
-                  <span className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm text-xs font-medium text-text-primary px-2.5 py-1 rounded-full">
-                    {item.price}
-                  </span>
-                </div>
-                <div className="p-4">
-                  <h3 className="font-bold text-text-primary text-base mb-1.5 group-hover:text-primary transition-colors">
-                    {item.title}
-                  </h3>
-                  <p className="text-text-muted text-xs leading-relaxed mb-3 line-clamp-2">
-                    {item.desc}
-                  </p>
-                  <div className="flex items-center justify-between pt-2 border-t border-gray-50">
-                    <span className="text-distance text-xs font-medium flex items-center gap-1">📍 {item.distance}</span>
-                    <span className="text-star text-xs font-medium flex items-center gap-1">⭐ {item.rating}/5</span>
-                  </div>
-                </div>
+          {recsLoading ? (
+            <div className="text-center py-12">
+              <div className="flex justify-center gap-1 mb-3">
+                <span className="w-2 h-2 bg-primary rounded-full typing-dot" />
+                <span className="w-2 h-2 bg-primary rounded-full typing-dot" />
+                <span className="w-2 h-2 bg-primary rounded-full typing-dot" />
               </div>
-            ))}
-          </div>
+              <p className="text-sm text-text-muted">Finding recommendations near you...</p>
+            </div>
+          ) : recommendations.length > 0 ? (
+            <RestaurantList restaurants={recommendations} title="Recommended near you" />
+          ) : null}
         </section>
       )}
     </main>

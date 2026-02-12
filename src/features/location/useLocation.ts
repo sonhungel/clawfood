@@ -15,7 +15,7 @@ export function useLocation() {
   const getAddress = useCallback(async (lat: number, lng: number) => {
     try {
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=vi`
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=en`
       );
       const data = await response.json();
       if (data.address) {
@@ -23,11 +23,11 @@ export function useLocation() {
         if (data.address.road) parts.push(data.address.road);
         if (data.address.suburb) parts.push(data.address.suburb);
         if (data.address.city || data.address.town) parts.push(data.address.city || data.address.town);
-        return parts.join(', ') || data.display_name?.split(',').slice(0, 3).join(',') || 'Không xác định';
+        return parts.join(', ') || data.display_name?.split(',').slice(0, 3).join(',') || 'Unknown location';
       }
-      return 'Không xác định';
+      return 'Unknown location';
     } catch {
-      return 'Không xác định';
+      return 'Unknown location';
     }
   }, []);
 
@@ -38,7 +38,7 @@ export function useLocation() {
       setState(prev => ({
         ...prev,
         loading: false,
-        error: 'Trình duyệt không hỗ trợ Geolocation',
+        error: 'Your browser does not support Geolocation',
       }));
       return;
     }
@@ -55,16 +55,16 @@ export function useLocation() {
         });
       },
       (error) => {
-        let errorMessage = 'Không thể lấy vị trí';
+        let errorMessage = 'Unable to get location';
         switch (error.code) {
           case error.PERMISSION_DENIED:
-            errorMessage = 'Bạn đã từ chối quyền truy cập vị trí';
+            errorMessage = 'Location access denied';
             break;
           case error.POSITION_UNAVAILABLE:
-            errorMessage = 'Không thể xác định vị trí';
+            errorMessage = 'Location unavailable';
             break;
           case error.TIMEOUT:
-            errorMessage = 'Hết thời gian lấy vị trí';
+            errorMessage = 'Location request timed out';
             break;
         }
         setState(prev => ({

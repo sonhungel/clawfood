@@ -1,40 +1,46 @@
 /**
- * Tạo prompt gửi ChatGPT để gợi ý quán ăn
+ * Build a prompt to send to ChatGPT for restaurant recommendations
  */
 export function buildSearchPrompt(
   keyword: string,
   latitude: number,
   longitude: number
 ): string {
-  return `Tôi đang ở vị trí latitude: ${latitude}, longitude: ${longitude}.
-Tôi muốn tìm "${keyword}".
-Hãy gợi ý 6 quán ăn/quán nước ngon và phù hợp gần vị trí của tôi.
+  return `I am currently at latitude: ${latitude}, longitude: ${longitude}.
+I am looking for "${keyword}".
+Please suggest 6 great restaurants/cafes/eateries near my location.
 
-Trả về kết quả dưới dạng JSON array với format sau (KHÔNG có text nào khác ngoài JSON):
+Return the results as a JSON array with this exact format (NO other text outside the JSON):
 [
   {
     "id": "1",
-    "name": "Tên quán",
-    "description": "Mô tả ngắn gọn về quán (1-2 câu)",
-    "distance": "khoảng cách ước lượng (VD: 0.5km)",
+    "name": "Restaurant Name (use real/official name)",
+    "description": "Brief description of the place (1-2 sentences)",
+    "distance": "estimated distance (e.g. 0.5km)",
     "rating": 4.5,
-    "address": "Địa chỉ quán",
-    "priceRange": "Khoảng giá (VD: 30k-50k)",
-    "cuisine": "Loại món ăn"
+    "address": "Full street address of the restaurant",
+    "priceRange": "Price range (e.g. $5-$15)",
+    "cuisine": "Type of cuisine (e.g. Vietnamese, Japanese, Korean, Coffee, BBQ, Italian, Thai, Chinese, Healthy, Boba)",
+    "latitude": 10.7769,
+    "longitude": 106.7009
   }
 ]
 
-Lưu ý:
-- Gợi ý quán ĐỜI THỰC, phổ biến tại khu vực đó
-- Rating từ 1-5, có thể dùng số thập phân
-- Khoảng cách ước lượng hợp lý
-- Mô tả ngắn gọn, hấp dẫn`;
+Important:
+- Suggest REAL, well-known restaurants in that area
+- Use the actual name that would appear on Google Maps
+- Include the full street address so it can be found on Google Maps
+- You MUST provide accurate latitude and longitude coordinates for each restaurant (this is critical for map navigation)
+- Rating from 1-5, decimals allowed
+- Estimate distance reasonably
+- Keep descriptions short and appealing`;
 }
 
 /**
- * System prompt cho ChatGPT
+ * System prompt for ChatGPT
  */
-export const SYSTEM_PROMPT = `Bạn là trợ lý gợi ý quán ăn thông minh. 
-Bạn có kiến thức rộng về các quán ăn, nhà hàng, quán cà phê tại Việt Nam.
-Hãy gợi ý dựa trên vị trí và nhu cầu của người dùng.
-Luôn trả về kết quả dạng JSON array hợp lệ, KHÔNG kèm theo text giải thích nào khác.`;
+export const SYSTEM_PROMPT = `You are a smart restaurant recommendation assistant.
+You have extensive knowledge about restaurants, cafes, and eateries worldwide.
+Recommend places based on the user's location and preferences.
+Always return results as a valid JSON array, with NO additional explanatory text.
+Use real restaurant names and addresses that can be found on Google Maps.`;
